@@ -223,7 +223,10 @@ class PGCompleter(Completer):
                 has_default=has_default,
                 default=default,
             )
-            metadata[schema][relname][colname] = column
+            try:
+                metadata[schema][relname][colname] = column
+            except KeyError:
+                metadata[schema][relname] = dict(colname = column)
             self.all_completions.add(colname)
 
     def extend_functions(self, func_data):

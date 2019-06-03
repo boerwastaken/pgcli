@@ -539,8 +539,27 @@ class PGExecute(object):
                 'm' - materialized view
         :return: list of (schema_name, relation_name, column_name, column_type) tuples
         """
-
-        if self.conn.server_version >= 80400:
+        if self.conn.server_version >= 120000:
+            columns_query = """
+                SELECT  nsp.nspname schema_name,
+                        cls.relname table_name,
+                        att.attname column_name,
+                        att.atttypid::regtype::text type_name,
+                        att.atthasdef AS has_default,
+                        pg_get_expr(def.adbin, def.adrelid) as default
+                FROM    pg_catalog.pg_attribute att
+                        INNER JOIN pg_catalog.pg_class cls
+                            ON att.attrelid = cls.oid
+                        INNER JOIN pg_catalog.pg_namespace nsp
+                            ON cls.relnamespace = nsp.oid
+                        LEFT OUTER JOIN pg_attrdef def
+                            ON def.adrelid = att.attrelid
+                            AND def.adnum = att.attnum
+                WHERE   cls.relkind = ANY(ARRAY['r'])
+                        AND NOT att.attisdropped
+                        AND att.attnum  > 0
+                ORDER BY 1, 2, att.attnum"""
+        elif self.conn.server_version >= 80400:
             columns_query = """
                 SELECT  nsp.nspname schema_name,
                         cls.relname table_name,
